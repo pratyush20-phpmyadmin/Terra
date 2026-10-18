@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Terra Pomodoro Garden Tracker</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for Retro Arcade Vibe -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            pixel: ['"Press Start 2P"', 'monospace'],
+            vt: ['"VT323"', 'monospace'],
+          },
+          colors: {
+            retroGreen: '#2d5a27',
+            retroLightGreen: '#72b043',
+            retroBg: '#e2f0d9',
+            retroPanel: '#f7fbf4',
+            retroBrown: '#5c4033',
+            retroGold: '#f39c12',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar & Snap Setup */
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
+    }
+
+    section {
+      scroll-snap-align: start;
+    }
+
+    /* Pixelated borders & shadows */
+    .pixel-box {
+      border: 4px solid #2d5a27;
+      box-shadow: 6px 6px 0px #2d5a27;
+    }
+
+    .pixel-box-sm {
+      border: 2px solid #2d5a27;
+      box-shadow: 3px 3px 0px #2d5a27;
+    }
+
+    .pixel-btn {
+      border: 3px solid #2d5a27;
+      box-shadow: 4px 4px 0px #2d5a27;
+      transition: all 0.1s ease;
+    }
+
+    .pixel-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0px #2d5a27;
+    }
+
+    /* CSS Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-grow {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .animate-pulse-grow {
+      animation: pulse-grow 2s ease-in-out infinite;
+    }
+
+    /* Custom Confetti Canvas Container */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body class="bg-retroBg text-retroGreen font-vt text-xl selection:bg-retroLightGreen selection:text-white">
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Sticky Navigation Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-retroPanel border-b-4 border-retroGreen px-4 py-3 flex justify-between items-center shadow-md">
+    <div class="flex items-center space-x-2 font-pixel text-xs sm:text-sm text-retroGreen">
+      <span class="text-xl">🌱</span>
+      <span>TERRA POMODORO</span>
+    </div>
+    <nav class="hidden md:flex space-x-6 font-pixel text-xs">
+      <a href="#hero" class="hover:text-retroLightGreen transition">HOME</a>
+      <a href="#timer-section" class="hover:text-retroLightGreen transition">FARM TIMER</a>
+      <a href="#garden-section" class="hover:text-retroLightGreen transition">STORAGE</a>
+      <a href="#stats-section" class="hover:text-retroLightGreen transition">STATS & BADGES</a>
+    </nav>
+    <button id="sound-toggle-btn" class="pixel-btn bg-retroLightGreen text-white px-3 py-1 text-xs font-pixel rounded">
+      🔊 SOUND: ON
+    </button>
+  </header>
+
+  <!-- SECTION 1: HERO SECTION -->
+  <section id="hero" class="min-h-screen flex flex-col justify-center items-center px-4 pt-16 text-center relative overflow-hidden">
+    <div class="pixel-box bg-retroPanel p-8 max-w-2xl w-full rounded-xl z-10 animate-float">
+      <div class="text-6xl mb-4">🧑‍🌾 🚜 🌻</div>
+      <h1 class="font-pixel text-2xl sm:text-4xl text-retroGreen mb-4 leading-relaxed">
+        GROW YOUR FARM WITH FOCUS
+      </h1>
+      <p class="text-2xl text-retroGreen mb-6">
+        Turn your 25-minute study sessions into a thriving pixel crop harvest for Hack Club Terra!
+      </p>
+      <div class="flex flex-col sm:flex-row justify-center gap-4 font-pixel text-xs">
+        <a href="#timer-section" class="pixel-btn bg-retroLightGreen text-white px-6 py-4 rounded hover:bg-green-600 block">
+          START FARMING NOW 👇
+        </a>
+        <a href="#stats-section" class="pixel-btn bg-white text-retroGreen px-6 py-4 rounded hover:bg-gray-100 block">
+          VIEW STATS 📊
+        </a>
+      </div>
+    </div>
+    <div class="absolute bottom-6 font-pixel text-xs opacity-75 animate-bounce">
+      SCROLL DOWN TO PLANT 🌱
+    </div>
+  </section>
+
+  <!-- SECTION 2: INTERACTIVE TIMER & FARM PLOT -->
+  <section id="timer-section" class="min-h-screen flex flex-col justify-center items-center px-4 pt-20 pb-10">
+    <div class="pixel-box bg-retroPanel p-6 sm:p-8 max-w-xl w-full rounded-xl">
+      
+      <!-- Timer Type Selector -->
+      <div class="flex justify-center space-x-2 font-pixel text-xs mb-6">
+        <button id="mode-work" class="pixel-btn bg-retroGreen text-white px-4 py-2 rounded">FOCUS (25m)</button>
+        <button id="mode-short" class="pixel-btn bg-white text-retroGreen px-4 py-2 rounded">BREAK (5m)</button>
+        <button id="mode-long" class="pixel-btn bg-white text-retroGreen px-4 py-2 rounded">LONG BREAK (15m)</button>
+      </div>
+
+      <!-- Plant Stage Graphic Display -->
+      <div class="relative bg-amber-100 border-4 border-retroBrown rounded-lg p-6 mb-6 flex flex-col items-center justify-center min-h-[180px] shadow-inner">
+        <div id="crop-stage-icon" class="text-7xl mb-2 animate-pulse-grow">🫘</div>
+        <div id="crop-stage-text" class="font-pixel text-xs text-retroBrown uppercase">STAGE: DORMANT SEED</div>
+        <div class="w-full bg-gray-300 h-3 border-2 border-retroBrown rounded-full mt-4 overflow-hidden">
+          <div id="crop-progress-bar" class="bg-retroLightGreen h-full w-0 transition-all duration-500"></div>\
+        </div>
+      </div>
+
+      <!-- Timer Count Display -->
+      <div id="timer-display" class="font-pixel text-4xl sm:text-6xl text-center text-retroGreen mb-6 tracking-widest">
+        25:00
+      </div>
+
+      <!-- Controls -->
+      <div class="flex justify-center space-x-4 font-pixel text-xs mb-6">
+        <button id="start-btn" class="pixel-btn bg-retroLightGreen text-white px-6 py-3 rounded text-sm hover:bg-green-600">
+          ▶ START
+        </button>
+        <button id="reset-btn" class="pixel-btn bg-rose-500 text-white px-6 py-3 rounded text-sm hover:bg-rose-600">
+          🔄 RESET
+        </button>
+      </div>
+
+      <!-- Duration Config Settings -->
+      <div class="border-t-2 border-dashed border-retroGreen pt-4 mt-4 text-center">
+        <span class="font-pixel text-xs text-retroGreen block mb-2">⚙️ CUSTOM DURATION (MINUTES)</span>
+        <div class="flex justify-center items-center space-x-3 text-lg">
+          <label>Focus:</label>
+          <input type="number" id="custom-work-input" value="25" min="1" max="120" class="w-16 border-2 border-retroGreen rounded px-2 text-center bg-white font-pixel text-xs" />
+          <label>Break:</label>
+          <input type="number" id="custom-break-input" value="5" min="1" max="60" class="w-16 border-2 border-retroGreen rounded px-2 text-center bg-white font-pixel text-xs" />
+          <button id="apply-custom-time" class="pixel-btn bg-retroGreen text-white px-2 py-1 text-xs font-pixel rounded">APPLY</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION 3: HARVESTED STORAGE -->
+  <section id="garden-section" class="min-h-screen flex flex-col justify-center items-center px-4 pt-20 pb-10">
+    <div class="pixel-box bg-retroPanel p-6 sm:p-8 max-w-3xl w-full rounded-xl">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="font-pixel text-lg sm:text-xl text-retroGreen">📦 CROP SILO & HARVEST</h2>
+        <button id="clear-garden-btn" class="pixel-btn bg-rose-400 text-white px-3 py-1 text-xs font-pixel rounded">CLEAR SILO</button>
+      </div>
+
+      <!-- Garden Plot Grid -->
+      <div id="garden-grid" class="grid grid-cols-3 sm:grid-cols-6 gap-4 min-h-[160px] bg-amber-50 border-4 border-dashed border-retroLightGreen p-4 rounded-lg mb-6">
+        <!-- Dynamic Crops populated via JS -->
+      </div>
+
+      <div class="bg-white p-4 border-2 border-retroGreen rounded-lg text-sm">
+        <div class="font-pixel text-xs text-retroGreen mb-2">💡 HARVEST LOGIC</div>
+        <p>Every completed focus session yields 1 random crop based on session duration! Collect common crops (Carrots, Tomatoes) or rare golden crops (Golden Apples) for longer study sessions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: STATS & BADGES -->
+  <section id="stats-section" class="min-h-screen flex flex-col justify-center items-center px-4 pt-20 pb-10">
+    <div class="pixel-box bg-retroPanel p-6 sm:p-8 max-w-3xl w-full rounded-xl">
+      <h2 class="font-pixel text-lg sm:text-xl text-retroGreen mb-6 text-center">📊 FARMING STATS & BADGES</h2>
+
+      <!-- Metrics Summary -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 text-center">
+        <div class="pixel-box-sm bg-white p-4 rounded">
+          <div id="stat-sessions" class="font-pixel text-2xl text-retroGreen">0</div>
+          <div class="text-sm font-pixel text-xs text-gray-600 mt-1">SESSIONS</div>
+        </div>
+        <div class="pixel-box-sm bg-white p-4 rounded">
+          <div id="stat-minutes" class="font-pixel text-2xl text-retroGreen">0</div>
+          <div class="text-sm font-pixel text-xs text-gray-600 mt-1">TOTAL MINS</div>
+        </div>
+        <div class="pixel-box-sm bg-white p-4 rounded">
+          <div id="stat-crops" class="font-pixel text-2xl text-retroGreen">0</div>
+          <div class="text-sm font-pixel text-xs text-gray-600 mt-1">CROPS HARVESTED</div>
+        </div>
+        <div class="pixel-box-sm bg-white p-4 rounded">
+          <div id="stat-streak" class="font-pixel text-2xl text-retroGreen">0</div>
+          <div class="text-sm font-pixel text-xs text-gray-600 mt-1">STREAK (DAYS)</div>
+        </div>
+      </div>
+
+      <!-- Badges Unlocked -->
+      <h3 class="font-pixel text-sm text-retroGreen mb-4">ACHIEVEMENT BADGES</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div id="badge-1" class="pixel-box-sm bg-gray-200 p-3 rounded text-center opacity-50 transition-all">
+          <div class="text-3xl">🌱</div>
+          <div class="font-pixel text-[10px] mt-2">FIRST SPROUT</div>
+          <div class="text-xs text-gray-600">Complete 1 session</div>
+        </div>
+        <div id="badge-2" class="pixel-box-sm bg-gray-200 p-3 rounded text-center opacity-50 transition-all">
+          <div class="text-3xl">🧺</div>
+          <div class="font-pixel text-[10px] mt-2">HARVESTER</div>
+          <div class="text-xs text-gray-600">Harvest 5 crops</div>
+        </div>
+        <div id="badge-3" class="pixel-box-sm bg-gray-200 p-3 rounded text-center opacity-50 transition-all">
+          <div class="text-3xl">⏱️</div>
+          <div class="font-pixel text-[10px] mt-2">CENTURION</div>
+          <div class="text-xs text-gray-600">Log 100+ minutes</div>
+        </div>
+        <div id="badge-4" class="pixel-box-sm bg-gray-200 p-3 rounded text-center opacity-50 transition-all">
+          <div class="text-3xl">👑</div>
+          <div class="font-pixel text-[10px] mt-2">TERRA MASTER</div>
+          <div class="text-xs text-gray-600">Complete 10 sessions</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // --- WEB AUDIO API SYNTHESIZER ---
+    let soundEnabled = true;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioContext();
+      }
+    }
+
+    function playTone(freq, duration, type = 'sine') {
+      if (!soundEnabled) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch(e) { console.log(e); }
+    }
+
+    function playSuccessChime() {
+      if (!soundEnabled) return;
+      playTone(523.25, 0.15, 'triangle'); // C5
+      setTimeout(() => playTone(659.25, 0.15, 'triangle'), 150); // E5
+      setTimeout(() => playTone(783.99, 0.3, 'triangle'), 300); // G5
+    }
+
+    function playClick() {
+      playTone(400, 0.05, 'square');
+    }
+
+    // --- SOUND TOGGLE ---
+    const soundToggleBtn = document.getElementById('sound-toggle-btn');
+    soundToggleBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundToggleBtn.textContent = soundEnabled ? "🔊 SOUND: ON" : "🔇 SOUND: OFF";
+      soundToggleBtn.classList.toggle('bg-retroLightGreen', soundEnabled);
+      soundToggleBtn.classList.toggle('bg-gray-400', !soundEnabled);
+    });
+
+    // --- APP STATE & CONSTANTS ---
+    let workDuration = 25 * 60;
+    let breakDuration = 5 * 60;
+    let longBreakDuration = 15 * 60;
+    let currentDuration = workDuration;
+    let timeLeft = currentDuration;
+    let timerId = null;
+    let currentMode = 'work'; // 'work', 'short', 'long'
+
+    const CROPS = [
+      { name: "Carrot", icon: "🥕", rarity: "Common" },
+      { name: "Tomato", icon: "🍅", rarity: "Common" },
+      { name: "Corn", icon: "🌽", rarity: "Common" },
+      { name: "Strawberry", icon: "🍓", rarity: "Uncommon" },
+      { name: "Sunflower", icon: "🌻", rarity: "Uncommon" },
+      { name: "Golden Apple", icon: "🍎", rarity: "Rare" }
+    ];
+
+    // Local Storage Data
+    let userData = JSON.parse(localStorage.getItem('terraPomodoroData')) || {
+      sessions: 0,
+      totalMinutes: 0,
+      crops: [],
+      lastDate: null,
+      streak: 0
+    };
+
+    // --- DOM ELEMENTS ---
+    const timerDisplay = document.getElementById('timer-display');
+    const startBtn = document.getElementById('start-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const modeWorkBtn = document.getElementById('mode-work');
+    const modeShortBtn = document.getElementById('mode-short');
+    const modeLongBtn = document.getElementById('mode-long');
+    const cropStageIcon = document.getElementById('crop-stage-icon');
+    const cropStageText = document.getElementById('crop-stage-text');
+    const cropProgressBar = document.getElementById('crop-progress-bar');
+    const gardenGrid = document.getElementById('garden-grid');
+    const clearGardenBtn = document.getElementById('clear-garden-btn');
+
+    const customWorkInput = document.getElementById('custom-work-input');
+    const customBreakInput = document.getElementById('custom-break-input');
+    const applyCustomTimeBtn = document.getElementById('apply-custom-time');
+
+    // Stats Elements
+    const statSessions = document.getElementById('stat-sessions');
+    const statMinutes = document.getElementById('stat-minutes');
+    const statCrops = document.getElementById('stat-crops');
+    const statStreak = document.getElementById('stat-streak');
+
+    // --- INITIALIZATION ---
+    function init() {
+      updateTimerDisplay();
+      renderGarden();
+      updateStatsUI();
+      updateBadgesUI();
+    }
+
+    // --- TIMER LOGIC ---
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = formatTime(timeLeft);
+      updateCropStage();
+    }
+
+    function updateCropStage() {
+      if (currentMode !== 'work') {
+        cropStageIcon.textContent = "☕";
+        cropStageText.textContent = "STAGE: REST & BREAK";
+        cropProgressBar.style.width = "100%";
+        return;
+      }
+
+      const elapsed = currentDuration - timeLeft;
+      const progress = elapsed / currentDuration;
+      cropProgressBar.style.width = `${progress * 100}%`;
+
+      if (progress < 0.25) {
+        cropStageIcon.textContent = "🫘";
+        cropStageText.textContent = "STAGE: DORMANT SEED";
+      } else if (progress < 0.6) {
+        cropStageIcon.textContent = "🌱";
+        cropStageText.textContent = "STAGE: SPROUTING";
+      } else if (progress < 0.95) {
+        cropStageIcon.textContent = "🌿";
+        cropStageText.textContent = "STAGE: GROWING STEM";
+      } else {
+        cropStageIcon.textContent = "🌻";
+        cropStageText.textContent = "STAGE: READY TO HARVEST!";
+      }
+    }
+
+    function setMode(mode) {
+      playClick();
+      currentMode = mode;
+      clearInterval(timerId);
+      timerId = null;
+      startBtn.textContent = "▶ START";
+
+      modeWorkBtn.className = "pixel-btn bg-white text-retroGreen px-4 py-2 rounded";
+      modeShortBtn.className = "pixel-btn bg-white text-retroGreen px-4 py-2 rounded";
+      modeLongBtn.className = "pixel-btn bg-white text-retroGreen px-4 py-2 rounded";
+
+      if (mode === 'work') {
+        currentDuration = workDuration;
+        modeWorkBtn.className = "pixel-btn bg-retroGreen text-white px-4 py-2 rounded";
+      } else if (mode === 'short') {
+        currentDuration = breakDuration;
+        modeShortBtn.className = "pixel-btn bg-retroGreen text-white px-4 py-2 rounded";
+      } else if (mode === 'long') {
+        currentDuration = longBreakDuration;
+        modeLongBtn.className = "pixel-btn bg-retroGreen text-white px-4 py-2 rounded";
+      }
+
+      timeLeft = currentDuration;
+      updateTimerDisplay();
+    }
+
+    startBtn.addEventListener('click', () => {
+      playClick();
+      if (timerId !== null) {
+        // Pause
+        clearInterval(timerId);
+        timerId = null;
+        startBtn.textContent = "▶ RESUME";
+        return;
+      }
+
+      startBtn.textContent = "⏸ PAUSE";
+      timerId = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+
+        if (timeLeft <= 0) {
+          clearInterval(timerId);
+          timerId = null;
+          startBtn.textContent = "▶ START";
+          handleSessionComplete();
+        }
+      }, 1000);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      playClick();
+      clearInterval(timerId);
+      timerId = null;
+      startBtn.textContent = "▶ START";
+      timeLeft = currentDuration;
+      updateTimerDisplay();
+    });
+
+    modeWorkBtn.addEventListener('click', () => setMode('work'));
+    modeShortBtn.addEventListener('click', () => setMode('short'));
+    modeLongBtn.addEventListener('click', () => setMode('long'));
+
+    applyCustomTimeBtn.addEventListener('click', () => {
+      playClick();
+      const newWork = parseInt(customWorkInput.value) || 25;
+      const newBreak = parseInt(customBreakInput.value) || 5;
+      workDuration = newWork * 60;
+      breakDuration = newBreak * 60;
+      setMode(currentMode);
+    });
+
+    // --- SESSION COMPLETION & REWARDS ---
+    function handleSessionComplete() {
+      playSuccessChime();
+      triggerConfetti();
+
+      if (currentMode === 'work') {
+        // Log Session
+        userData.sessions++;
+        const minsLogged = Math.round(workDuration / 60);
+        userData.totalMinutes += minsLogged;
+
+        // Harvest Random Crop
+        const randomCrop = CROPS[Math.floor(Math.random() * CROPS.length)];
+        userData.crops.push({
+          ...randomCrop,
+          harvestedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+
+        // Update Daily Streak
+        const today = new Date().toDateString();
+        if (userData.lastDate !== today) {
+          userData.streak++;
+          userData.lastDate = today;
+        }
+
+        saveUserData();
+        renderGarden();
+        updateStatsUI();
+        updateBadgesUI();
+
+        alert(`🎉 GREAT JOB! You harvested 1 ${randomCrop.name} (${randomCrop.icon})!`);
+      } else {
+        alert("☕ Break time is over! Ready to focus again?");
+      }
+    }
+
+    // --- GARDEN RENDER ---
+    function renderGarden() {
+      gardenGrid.innerHTML = "";
+      if (userData.crops.length === 0) {
+        gardenGrid.innerHTML = `
+          <div class="col-span-full text-center text-sm font-pixel text-gray-500 py-6">
+            YOUR SILO IS EMPTY. COMPLETE A FOCUS SESSION TO HARVEST CROPS!
+          </div>
+        `;
+        return;
+      }
+
+      userData.crops.forEach((crop, index) => {
+        const item = document.createElement('div');
+        item.className = "pixel-box-sm bg-white p-3 rounded flex flex-col items-center justify-center relative group cursor-pointer hover:bg-green-50";
+        item.innerHTML = `
+          <div class="text-3xl mb-1">${crop.icon}</div>
+          <div class="font-pixel text-[9px] text-center">${crop.name}</div>
+          <div class="hidden group-hover:block absolute -top-8 bg-retroGreen text-white text-[10px] font-pixel px-2 py-1 rounded shadow z-20">
+            ${crop.rarity} (${crop.harvestedAt})
+          </div>
+        `;
+        gardenGrid.appendChild(item);
+      });
+    }
+
+    clearGardenBtn.addEventListener('click', () => {
+      playClick();
+      if (confirm("Are you sure you want to clear your harvested crop silo?")) {
+        userData.crops = [];
+        saveUserData();
+        renderGarden();
+        updateStatsUI();
+      }
+    });
+
+    // --- STATS & BADGES UPDATE ---
+    function updateStatsUI() {
+      statSessions.textContent = userData.sessions;
+      statMinutes.textContent = userData.totalMinutes;
+      statCrops.textContent = userData.crops.length;
+      statStreak.textContent = userData.streak;
+    }
+
+    function updateBadgesUI() {
+      if (userData.sessions >= 1) unlockBadge('badge-1');
+      if (userData.crops.length >= 5) unlockBadge('badge-2');
+      if (userData.totalMinutes >= 100) unlockBadge('badge-3');
+      if (userData.sessions >= 10) unlockBadge('badge-4');
+    }
+
+    function unlockBadge(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('opacity-50', 'bg-gray-200');
+        el.classList.add('bg-amber-100', 'border-2', 'border-retroGold');
+      }
+    }
+
+    function saveUserData() {
+      localStorage.setItem('terraPomodoroData', JSON.stringify(userData));
+    }
+
+    // --- CONFETTI EFFECT ---
+    function triggerConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles = [];
+      const colors = ['#72b043', '#2d5a27', '#f39c12', '#e74c3c', '#3498db'];
+
+      for (let i = 0; i < 80; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12 - 4,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        });
+      }
+
+      let frame = 0;
+      function animateParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach((p) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.2; // Gravity
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+        });
+
+        frame++;
+        if (frame < 100) {
+          requestAnimationFrame(animateParticles);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      animateParticles();
+    }
+
+    // Start App
+    window.onload = init;
+  </script>
+</body>
+</html>
